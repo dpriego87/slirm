@@ -1,6 +1,7 @@
 import os
 import tqdm
 import numpy as np
+import itertools
 SEED_MAX = 2**32-1
 
 def get_files(dir, suffix):
