@@ -27,13 +27,13 @@ TEMPLATE = f"""\
 #SBATCH --chdir={{cwd}}
 #SBATCH --error=logs/error/{JOBNAME}_%j.err
 #SBATCH --output=logs/out/{JOBNAME}_%j.out
-#SBATCH --partition=kern,kerngpu,preempt
+##SBATCH --partition=kern,kerngpu,preempt
 #SBATCH --job-name={JOBNAME}_%j
 #SBATCH --time={{job_time}}
-#SBATCH --ntasks-per-node=1
+##SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=1G
-#SBATCH --account=kernlab
+##SBATCH --mem=1G
+##SBATCH --account=kernlab
 
 {{cmd}}
 
@@ -45,8 +45,8 @@ def est_time(secs_per_job, batch_size, factor=5):
     days = int(tot_hours // 24)
     time_left = tot_hours % 24
     hours = int(time_left // 1)
-    minutes = ceil(60*time_left)
-    return f"{days:02d}-{hours}:{minutes}:00"
+    minutes = ceil(60*(time_left-hours))
+    return f"{days:02d}-{hours}:{minutes:02d}:00"
 
 def get_files(dir, suffix):
     results = []
