@@ -200,5 +200,11 @@ def generate(config, user, dir, suffix, secs_per_job, max_jobs,  seed, split_dir
     with open(f"{config['name']}_stats.pkl", 'wb') as f:
         pickle.dump(done_jobs, f)
 
-if __name__ == "__main__":
+def main():
+    print("Starting slirm...")
+    print(f"__name__ is {__name__}")
+    
+if __name__ == "slirm.cli":
     generate()
+
+    
