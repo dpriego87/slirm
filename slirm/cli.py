@@ -30,10 +30,10 @@ TEMPLATE = f"""\
 ##SBATCH --partition=kern,kerngpu,preempt
 #SBATCH --job-name={JOBNAME}_%j
 #SBATCH --time={{job_time}}
-##SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-##SBATCH --mem=1G
-##SBATCH --account=kernlab
+#SBATCH --mem=1G
+#SBATCH --account=kernlab
 
 {{cmd}}
 
