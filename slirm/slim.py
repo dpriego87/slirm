@@ -158,6 +158,9 @@ class SlimRuns(object):
                     basename = os.path.basename(
                         self.filename_pattern.format(**sample))
                     sample = {**sample, 'basename': basename}
+                # this is the parent dir of subdir (if set) or wherever simulations are being saved
+                # to later be passed in the slim command line
+                sample = {**sample, 'dir': self.dir}
                 # the expected output files for this run
                 target_files = []
                 for end in suffix:
@@ -272,6 +275,11 @@ class SlimRuns(object):
             # this is not a parameter, so we include it in manual
             manual = slim_call_kwargs.get('manual', {})
             manual['basename'] = wildcards.pop('basename')
+            slim_call_kwargs['manual'] = manual
+        if 'dir' in wildcards:
+            # this is not a parameter, so we include it in manual
+            manual = slim_call_kwargs.get('manual', {})
+            manual['dir'] = wildcards.pop('dir')
             slim_call_kwargs['manual'] = manual
         call = self.slim_call(**slim_call_kwargs).replace("wildcards.", "")
         return call.format(**wildcards)
