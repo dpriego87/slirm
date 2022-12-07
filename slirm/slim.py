@@ -256,7 +256,7 @@ class SlimRuns(object):
         """
         Return a string SLiM call, with SLiM variables passed as command
         line arguments and retrieved from SLiM wildcards, e.g.
-        slim -v val={wildcards.val} (for use with a structured filename).
+        slim -d val={wildcards.val} (for use with a structured filename).
 
         Passes in the name of the run.
         """
