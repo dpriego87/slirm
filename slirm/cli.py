@@ -154,12 +154,12 @@ def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, sleep=30):
 @click.option('--dir', required=True, type=str, help="output directory for simulation results")
 @click.option('--suffix', required=True, type=str, help="suffix of output files (e.g. 'treeseq.tree')")
 @click.option('--secs-per-job', required=True, type=int, help="number of seconds per simulation")
-@click.option('--max-jobs', default=5000, help="max number of jobs before launching more")
+@click.option('--max-jobs', default=5000, show_default=True, help="max number of jobs before launching more")
 @click.option('--seed', required=True, type=int, help='seed to use')
-@click.option('--split-dirs', default=3, type=int, help="number of seed digits to use as subdirectory")
-@click.option('--slim', default='slim', help='path to SLiM executable')
-@click.option('--max-array', default=None, type=int, help='max number of array jobs')
-@click.option('--batch-size', default=None, type=int, help='size of number of sims to run in one job')
+@click.option('--split-dirs', default=3, show_default=True, type=int, help="number of seed digits to use as subdirectory")
+@click.option('--slim', default='slim', show_default=True, help='path to SLiM executable')
+@click.option('--max-array', default=None, show_default=True, type=int, help='max number of array jobs')
+@click.option('--batch-size', default=None, show_default=True, type=int, help='size of number of sims to run in one job')
 def generate(config, user, dir, suffix, secs_per_job, max_jobs,  seed, split_dirs=3,
              slim='slim', max_array=None, batch_size=None):
     config = json.load(config)
