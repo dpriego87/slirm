@@ -148,20 +148,20 @@ class SlimRuns(object):
                 if self.nreps is not None or package_rep:
                     # package_rep is whether to include 'rep' into sample dict
                     sample['rep'] = rep
-
+                # check if we need to add in a subdir:
+                if self.split_dirs is not None:
+                    dir_seed = str(sample['seed'])[:self.split_dirs]
+                    sample = {**sample, 'subdir': dir_seed}
+                if package_basename:
+                    # this is a sim basename, which has all the parameters
+                    # slightly different than the basename in this class.
+                    basename = os.path.basename(
+                        self.filename_pattern.format(**sample))
+                    sample = {**sample, 'basename': basename}
                 # the expected output files for this run
                 target_files = []
                 for end in suffix:
                     filename = f"{self.filename_pattern}_{end}"
-                    # check if we need to add in a subdir:
-                    if self.split_dirs is not None:
-                        dir_seed = str(sample['seed'])[:self.split_dirs]
-                        sample = {**sample, 'subdir': dir_seed}
-                    if package_basename:
-                        # this is a sim basename, which has all the parameters
-                        # slightly different than the basename in this class.
-                        basename = os.path.basename(self.filename_pattern.format(**sample))
-                        sample = {**sample, 'basename': basename}
                     # propagate the sample into the filename
                     filename = filename.format(**sample)
                     target_files.append(filename)
