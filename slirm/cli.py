@@ -172,7 +172,7 @@ def generate(config, user, dir, suffix, secs_per_job, max_jobs,  seed, split_dir
         sampler = Sampler
 
     run = SlimRuns(config, dir=dir, sims_subdir=True, sampler=sampler,
-                   split_dirs=split_dirs, seed=seed)
+                   split_dirs=split_dirs if split_dirs>0 else None, seed=seed)
 
     # get the existing files
     print("searching for existing simulation results...   ", end='')
