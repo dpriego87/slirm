@@ -27,13 +27,14 @@ TEMPLATE = f"""\
 #SBATCH --chdir={{cwd}}
 #SBATCH --error=logs/error/{JOBNAME}_%j.err
 #SBATCH --output=logs/out/{JOBNAME}_%j.out
-##SBATCH --partition=kern,kerngpu,preempt
+#SBATCH --account=coa_jva238_uksr
+#SBATCH --partition=normal
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem-per-cpu=4G
 #SBATCH --job-name={JOBNAME}_%j
 #SBATCH --time={{job_time}}
-##SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=1
-##SBATCH --mem=1G
-##SBATCH --account=kernlab
+#SBATCH --exclude=rome060
 
 {{cmd}}
 
@@ -116,7 +117,9 @@ def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, sleep=30):
                 total_time += tdelta
                 total_done += 1
         return running_jobs
-
+    est_time_per_batch = est_time(secs_per_job, batch_size)
+    sys.stderr.write(f"Estimated time per batch: {est_time_per_batch}\n")
+    sys.stderr.flush()
     while True:
         running_jobs = update_jobs()
         while len(running_jobs) < max_jobs:
@@ -125,9 +128,11 @@ def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, sleep=30):
                 this_batch = jobs.pop()
             except IndexError:
                 break
-            sbatch_cmd = make_job(this_batch, job_time=est_time(secs_per_job, batch_size))
+            sbatch_cmd = make_job(this_batch, job_time=est_time_per_batch)
+            sys.stdout.write(sbatch_cmd)
+            sys.stdout.flush()
             res = subprocess.run(["sbatch"], input=sbatch_cmd, text=True, capture_output=True)
-            assert res.returncode == 0, "sbatch had a non-zero exit code!"
+            assert res.returncode == 0, f"sbatch had a non-zero ({res.returncode}) exit code, input args were:\n {res.args} !"
             jobid = res.stdout.strip().replace('Submitted batch job ', '')
             # put this new job in the tracker
             live_jobs[jobid] = time.time()
@@ -152,16 +157,19 @@ def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, sleep=30):
 @click.argument('config', type=click.File('r'), required=True)
 @click.option('--user', required=True, type=str, help="your username (for job querying)")
 @click.option('--dir', required=True, type=str, help="output directory for simulation results")
+@click.option('--seed-dir', default=None,type=str, help="seed simulations directory")
 @click.option('--suffix', required=True, type=str, help="suffix of output files (e.g. 'treeseq.tree')")
 @click.option('--secs-per-job', required=True, type=int, help="number of seconds per simulation")
 @click.option('--max-jobs', default=5000, show_default=True, help="max number of jobs before launching more")
 @click.option('--seed', required=True, type=int, help='seed to use')
+@click.option('--add-name', is_flag=True, help='add the name of the config file to the output file basenames')
+@click.option('--no-calc', is_flag=True, help='run simulations without performing measurements')
 @click.option('--split-dirs', default=3, show_default=True, type=int, help="number of seed digits to use as subdirectory")
 @click.option('--slim', default='slim', show_default=True, help='path to SLiM executable')
 @click.option('--max-array', default=None, show_default=True, type=int, help='max number of array jobs')
 @click.option('--batch-size', default=None, show_default=True, type=int, help='size of number of sims to run in one job')
-def generate(config, user, dir, suffix, secs_per_job, max_jobs,  seed, split_dirs=3,
-             slim='slim', max_array=None, batch_size=None):
+def generate(config, user, dir, seed_dir, suffix, secs_per_job, max_jobs, seed, split_dirs,
+             slim, max_array, batch_size, add_name, no_calc):
     config = json.load(config)
 
     # note: we package all the sim seed-based subdirs into a sims/ directory
@@ -171,8 +179,8 @@ def generate(config, user, dir, suffix, secs_per_job, max_jobs,  seed, split_dir
         assert config['runtype'] == 'samples', "config file must have 'grid' or 'samples' runtype."
         sampler = Sampler
 
-    run = SlimRuns(config, dir=dir, sims_subdir=True, sampler=sampler,
-                   split_dirs=split_dirs if split_dirs>0 else None, seed=seed)
+    run = SlimRuns(config, dir=dir, seed_dir=seed_dir, sims_subdir=True, sampler=sampler, add_name=add_name,
+                   split_dirs=split_dirs if split_dirs>0 else None, seed=seed, nocalc=no_calc)
 
     # get the existing files
     print("searching for existing simulation results...   ", end='')

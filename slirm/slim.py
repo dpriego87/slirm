@@ -33,7 +33,7 @@ def filename_pattern(dir, base, params, split_dirs=False, seed=False, rep=False)
     return pattern
 
 
-def slim_call(param_types, script, slim_cmd="slim", add_seed=False,
+def slim_call(param_types, script, slim_cmd="slim", report_time=True,report_mem=True,add_seed=False,
               add_rep=False, manual=None):
     """
     Create a SLiM call prototype for Snakemake, which fills in the
@@ -46,6 +46,10 @@ def slim_call(param_types, script, slim_cmd="slim", add_seed=False,
     manual: a dict of manual items to pass in
     """
     call_args = []
+    if report_time:
+        call_args.append(f"-t") # this reports clock-time completion
+    if report_mem:
+        call_args.append(f"-m") # this report the peak in memory usage along the replicate
     for p, val_type in param_types.items():
         is_str = val_type is str
         if is_str:
@@ -73,8 +77,8 @@ def slim_call(param_types, script, slim_cmd="slim", add_seed=False,
 
 
 class SlimRuns(object):
-    def __init__(self, config, dir='.', sims_subdir=False, sampler=None,
-                 split_dirs=None, seed=None):
+    def __init__(self, config, dir='.', seed_dir=None, sims_subdir=False, sampler=None,
+                 add_name=False, split_dirs=None, seed=None, nocalc=False):
         msg = "runtype must be 'grid' or 'samples'"
         assert config.get('runtype', None) in ['grid', 'samples'], msg
         self.runtype = config['runtype']
@@ -103,8 +107,9 @@ class SlimRuns(object):
             self.dir = os.path.join(dir, self.name, 'sims')
         else:
             self.dir = os.path.join(dir, self.name)
+        self.seed_dir = seed_dir
         self.split_dirs = split_dirs
-        self.basename = f"{self.name}_"
+        self.basename = f"{self.name}_" if add_name else ""
         self.seed = seed if seed is not None else random_seed()
         self.sampler_func = sampler
         if sampler is None and self.is_samples:
@@ -113,6 +118,7 @@ class SlimRuns(object):
         # sampler also can be grid (non-random)
         self.sampler = None
         self.batches = None
+        self.nocalc = nocalc
 
     def _generate_runs(self, suffix, ignore_files=None, package_basename=True, package_rep=True):
         """
@@ -152,6 +158,10 @@ class SlimRuns(object):
                 if self.split_dirs is not None:
                     dir_seed = str(sample['seed'])[:self.split_dirs]
                     sample = {**sample, 'subdir': dir_seed}
+                # check if we need to set the nocalc flag that sets loading dummy calculation routines
+                # i.e. simulations where heterozygosity or FST functions are performed without any inside calculation 
+                if self.nocalc:
+                    sample['NoCalc'] = 1
                 if package_basename:
                     # this is a sim basename, which has all the parameters
                     # slightly different than the basename in this class.
@@ -161,6 +171,10 @@ class SlimRuns(object):
                 # this is the parent dir of subdir (if set) or wherever simulations are being saved
                 # to later be passed in the slim command line
                 sample = {**sample, 'dir': self.dir}
+                if self.seed_dir is not None:
+                    # this is the dir where simulation seeds are to be found
+                    # to later be passed in the slim command line
+                    sample = {**sample, 'seedSimDir': self.seed_dir}
                 # the expected output files for this run
                 target_files = []
                 for end in suffix:
@@ -280,6 +294,16 @@ class SlimRuns(object):
             # this is not a parameter, so we include it in manual
             manual = slim_call_kwargs.get('manual', {})
             manual['dir'] = wildcards.pop('dir')
+            slim_call_kwargs['manual'] = manual
+        if 'seedSimDir' in wildcards:
+            # this is not a parameter, so we include it in manual
+            manual = slim_call_kwargs.get('manual', {})
+            manual['seedSimDir'] = wildcards.pop('seedSimDir')
+            slim_call_kwargs['manual'] = manual
+        if 'nocalc' in wildcards:
+            # this is not a parameter, so we include it in manual
+            manual = slim_call_kwargs.get('manual', {})
+            manual['nocalc'] = wildcards.pop('nocalc')
             slim_call_kwargs['manual'] = manual
         call = self.slim_call(**slim_call_kwargs).replace("wildcards.", "")
         return call.format(**wildcards)

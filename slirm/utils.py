@@ -49,7 +49,7 @@ def make_dirs(*args):
     "Make directory if necessary"
     dir = os.path.join(*args)
     if not os.path.exists(dir):
-        os.makedirs(dir)
+        os.makedirs(dir, exist_ok=True)
     return dir
 
 
