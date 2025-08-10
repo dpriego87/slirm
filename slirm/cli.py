@@ -78,9 +78,10 @@ def make_job_script_lines(batch):
         assert not os.path.exists(outfile), f"file {outfile} exists!"
         dirs.append(os.path.split(outfile)[0])
         rows.append(cmd)
+    unique_dirs = set(dirs)
     if not len(rows):
         return ""
-    mkdirs = "mkdir -p " + " ".join(dirs) + "\n"
+    mkdirs = "mkdir -p " + " ".join(unique_dirs) + "\n"
     return mkdirs + "\n".join(rows) + "\n"
 
 def make_job(batch, job_time):
