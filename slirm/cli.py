@@ -34,7 +34,6 @@ TEMPLATE = f"""\
 #SBATCH --mem-per-cpu={{mem_per_cpu}}
 #SBATCH --job-name={JOBNAME}_%j
 #SBATCH --time={{job_time}}
-#SBATCH --exclude=rome060
 
 {{cmd}}
 
