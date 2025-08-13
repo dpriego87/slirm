@@ -34,7 +34,7 @@ TEMPLATE = f"""\
 #SBATCH --mem-per-cpu={{mem_per_cpu}}
 #SBATCH --job-name={JOBNAME}_%j
 #SBATCH --time={{job_time}}
-
+{{exclude_line}}
 {{cmd}}
 
 """
@@ -83,22 +83,27 @@ def make_job_script_lines(batch):
     mkdirs = "mkdir -p " + " ".join(unique_dirs) + "\n"
     return mkdirs + "\n".join(rows) + "\n"
 
-def make_job(batch, job_time, account, partition, mem_per_cpu):
+def make_job(batch, job_time, account, partition, mem_per_cpu, exclude):
     "Take a batch of (outfile, cmd) tuples and make a sbatch script to run the commands"
     cmd = make_job_script_lines(batch)
+    if exclude is not None:
+        exclude_line = f"#SBATCH --exclude={exclude}\n"
+    else:
+        exclude_line = "\n"
     sbatch = TEMPLATE.format(
         job_time=job_time,
         cwd=os.getcwd(),
         cmd=cmd,
         account=account,
         partition=partition,
-        mem_per_cpu=mem_per_cpu
+        mem_per_cpu=mem_per_cpu,
+        exclude_line=exclude_line
     )
     return sbatch
 
 
 
-def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, account, partition, mem_per_cpu, sleep=30):
+def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, account, partition, mem_per_cpu, exclude, sleep=30):
     """
     Submit multiple sbatch scripts through standard in.
     """
@@ -133,7 +138,7 @@ def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, account, part
                 this_batch = jobs.pop()
             except IndexError:
                 break
-            sbatch_cmd = make_job(this_batch, job_time=est_time_per_batch, account=account, partition=partition, mem_per_cpu=mem_per_cpu)
+            sbatch_cmd = make_job(this_batch, job_time=est_time_per_batch, account=account, partition=partition, mem_per_cpu=mem_per_cpu, exclude=exclude)
             sys.stdout.write(sbatch_cmd)
             sys.stdout.flush()
             res = subprocess.run(["sbatch"], input=sbatch_cmd, text=True, capture_output=True)
@@ -173,11 +178,12 @@ def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, account, part
 @click.option('--slim', default='slim', show_default=True, help='path to SLiM executable')
 @click.option('--max-array', default=None, show_default=True, type=int, help='max number of array jobs')
 @click.option('--batch-size', default=None, show_default=True, type=int, help='size of number of sims to run in one job')
+@click.option('--exclude', default=None, type=str, help='Nodes to exclude (comma-separated, e.g., node1,node2)')
 @click.option('--account', required=True, type=str, help='SLURM account name')
 @click.option('--partition', required=True, type=str, help='SLURM partition')
 @click.option('--mem-per-cpu', default='4G', show_default=True, type=str, help='Memory per CPU (e.g., 4G)')
 def generate(config, user, dir, seed_dir, suffix, secs_per_job, max_jobs, seed, split_dirs,
-             slim, max_array, batch_size, add_name, no_calc, account, partition, mem_per_cpu):
+             slim, max_array, batch_size, add_name, no_calc, exclude, account, partition, mem_per_cpu):
     config = json.load(config)
 
     # note: we package all the sim seed-based subdirs into a sims/ directory
@@ -211,7 +217,7 @@ def generate(config, user, dir, seed_dir, suffix, secs_per_job, max_jobs, seed, 
 
     # set out the output directory
     sim_dir = make_dirs(dir, config['name'])
-    total_time, done_jobs = job_dispatcher(user, job_batches, max_jobs, batch_size, secs_per_job, account, partition, mem_per_cpu)
+    total_time, done_jobs = job_dispatcher(user, job_batches, max_jobs, batch_size, secs_per_job, account, partition, mem_per_cpu, exclude)
     print(f"\n\ntotal run time: {str(total_time)}")
     with open(f"{config['name']}_stats.pkl", 'wb') as f:
         pickle.dump(done_jobs, f)
