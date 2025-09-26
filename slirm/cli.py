@@ -22,11 +22,13 @@ JOBNAME = "slurm_slim"
 
 DATADIR = '../../data/slim_sims/'
 
+# bear in mind that you are expected to prepare the directories for error and output logs
+# in the template below, e.g. mkdir -p {name}/logs/error {name}/logs/out
 TEMPLATE = f"""\
 #!/bin/bash
 #SBATCH --chdir={{cwd}}
-#SBATCH --error=logs/error/{JOBNAME}_%j.err
-#SBATCH --output=logs/out/{JOBNAME}_%j.out
+#SBATCH --error=logs/{{name}}/error/{JOBNAME}_%j.err
+#SBATCH --output=logs/{{name}}/out/{JOBNAME}_%j.out
 #SBATCH --account={{account}}
 #SBATCH --partition={{partition}}
 #SBATCH --nodes=1
@@ -84,7 +86,7 @@ def make_job_script_lines(batch):
     mkdirs = "mkdir -p " + " ".join(unique_dirs) + "\n"
     return mkdirs + "\n".join(rows) + "\n"
 
-def make_job(batch, job_time, account, partition, mem_per_cpu, exclude):
+def make_job(batch, job_time, account, partition, mem_per_cpu, exclude, name):
     "Take a batch of (outfile, cmd) tuples and make a sbatch script to run the commands"
     cmd = make_job_script_lines(batch)
     if exclude is not None:
@@ -98,13 +100,14 @@ def make_job(batch, job_time, account, partition, mem_per_cpu, exclude):
         account=account,
         partition=partition,
         mem_per_cpu=mem_per_cpu,
-        exclude_line=exclude_line
+        exclude_line=exclude_line,
+        name=name
     )
     return sbatch
 
 
 
-def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, account, partition, mem_per_cpu, exclude, sleep=30):
+def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, account, partition, mem_per_cpu, exclude, name, sleep=30):
     """
     Submit multiple sbatch scripts through standard in.
     """
@@ -139,7 +142,7 @@ def job_dispatcher(user, jobs, max_jobs, batch_size, secs_per_job, account, part
                 this_batch = jobs.pop()
             except IndexError:
                 break
-            sbatch_cmd = make_job(this_batch, job_time=est_time_per_batch, account=account, partition=partition, mem_per_cpu=mem_per_cpu, exclude=exclude)
+            sbatch_cmd = make_job(this_batch, job_time=est_time_per_batch, account=account, partition=partition, mem_per_cpu=mem_per_cpu, exclude=exclude, name=name)
             sys.stdout.write(sbatch_cmd)
             sys.stdout.flush()
             res = subprocess.run(["sbatch"], input=sbatch_cmd, text=True, capture_output=True)
@@ -218,7 +221,7 @@ def generate(config, user, dir, seed_dir, suffix, secs_per_job, max_jobs, seed, 
 
     # set out the output directory
     sim_dir = make_dirs(dir, config['name'])
-    total_time, done_jobs = job_dispatcher(user, job_batches, max_jobs, batch_size, secs_per_job, account, partition, mem_per_cpu, exclude)
+    total_time, done_jobs = job_dispatcher(user, job_batches, max_jobs, batch_size, secs_per_job, account, partition, mem_per_cpu, exclude, config['name'])
     print(f"\n\ntotal run time: {str(total_time)}")
     with open(f"{config['name']}_stats.pkl", 'wb') as f:
         pickle.dump(done_jobs, f)
