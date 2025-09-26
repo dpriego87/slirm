@@ -31,7 +31,8 @@ TEMPLATE = f"""\
 #SBATCH --partition={{partition}}
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem-per-cpu={{mem_per_cpu}}
+#SBATCH --cpus-per-task=1
+#SBATCH --mem={{mem_per_cpu}}
 #SBATCH --job-name={JOBNAME}_%j
 #SBATCH --time={{job_time}}
 {{exclude_line}}
